@@ -220,27 +220,21 @@
     <Compile Include="AppInfo.cs" />
     <Compile Include="AppModel.cs" />
     <Compile Include="BaseWindow.cs" />
-    <Compile Include="UpdateAvailableWindow.xaml.cs" />
-    <Page Include="CheckingForUpdatesWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="DownloadProgressWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="CheckingForUpdatesWindow.xaml.cs" />
-    <Compile Include="DownloadProgressWindow.xaml.cs" />
-    <Page Include="UpdateAvailableWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
+    <Compile Include="UpdateAvailableWindow.xaml.cs">
+      <DependentUpon>UpdateAvailableWindow.xaml</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CheckingForUpdatesWindow.xaml.cs">
+      <DependentUpon>CheckingForUpdatesWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DownloadProgressWindow.xaml.cs">
+      <DependentUpon>DownloadProgressWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -275,6 +269,20 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="CheckingForUpdatesWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>XamlIntelliSenseFileGenerator</Generator>
+    </Page>
+    <Page Include="DownloadProgressWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>XamlIntelliSenseFileGenerator</Generator>
+    </Page>
+    <Page Include="UpdateAvailableWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>XamlIntelliSenseFileGenerator</Generator>
+    </Page>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\CInstaller\packages\Fody.6.5.5\build\Fody.targets" Condition="Exists('..\CInstaller\packages\Fody.6.5.5\build\Fody.targets')" />
