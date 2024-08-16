@@ -1,5 +1,7 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using System.Windows;
+using System.Windows.Media.Imaging;
 
 namespace CUpdater
 {
@@ -24,7 +26,12 @@ namespace CUpdater
         /// </summary>
         public BaseWindow()
         {
-
+            var uri = new Uri("pack://application:,,,/icon.ico");
+            var bitmapImage = new BitmapImage(uri);
+            if (bitmapImage != null)
+            {
+                Icon = bitmapImage;
+            }
         }
 
         /// <summary>
@@ -33,7 +40,7 @@ namespace CUpdater
         /// </summary>
         /// <param name="useClosingEvent">true to use the <see cref="Window.Closing"/>
         /// event handler; false otherwise</param>
-        public BaseWindow(bool useClosingEvent)
+        public BaseWindow(bool useClosingEvent) : this()
         {
             if (useClosingEvent)
             {

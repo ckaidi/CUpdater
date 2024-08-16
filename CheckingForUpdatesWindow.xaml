@@ -39,7 +39,8 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Image Grid.Row="0"
+        <Image x:Name="IconImage" 
+            Grid.Row="0"
                Grid.RowSpan="2"
                Source="{Binding ElementName=CheckingForUpdateWindow, Path=Icon}"
                VerticalAlignment="Top"

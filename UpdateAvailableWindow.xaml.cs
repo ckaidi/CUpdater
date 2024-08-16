@@ -14,14 +14,16 @@ namespace CUpdater
         private bool _hasFinishedNavigatingToAboutBlank = false;
         private string _notes = "";
         private bool _wasResponseSent = false;
+        private AppInfo _appInfo;
 
         /// <summary>
         /// Initialize the available update window with no initial date context
         /// (and thus no initial information on downloadable releases to show
         /// to the user)
         /// </summary>
-        public UpdateAvailableWindow() : base(true)
+        public UpdateAvailableWindow(AppInfo appInfo) : base(true)
         {
+            _appInfo = appInfo;
             InitializeComponent();
         }
 

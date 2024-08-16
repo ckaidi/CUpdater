@@ -4,3 +4,5 @@
 
 /bin/x64/Debug
 /obj
+/CupdateInfoGenerater/bin/x64/Debug/net8.0-windows
+/CupdateInfoGenerater/obj
