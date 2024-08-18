@@ -2,7 +2,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using Xceed.Wpf.Toolkit;
 using Xceed.Wpf.Toolkit.CheckTreeItem;
+using Binding = System.Windows.Data.Binding;
 using CheckBox = Xceed.Wpf.Toolkit.CheckBox;
 using Orientation = System.Windows.Controls.Orientation;
 
@@ -35,7 +37,11 @@ namespace CupdateInfoGenerater
 
         private void ListFiles(CheckTreeItem listView, DirectoryInfo path)
         {
-            var multiBinding = new MultiBinding();
+            var multiBinding = new MultiBinding()
+            {
+                Converter = new ChechBoxMultiBinding(),
+                Mode = BindingMode.TwoWay,
+            };
             if (path != null)
             {
                 foreach (var folder in path.GetDirectories())
@@ -47,7 +53,6 @@ namespace CupdateInfoGenerater
                     ListFiles(subListView, folder);
                     listView.Items.Add(subListView);
                 }
-
                 foreach (var file in path.GetFiles())
                 {
                     var stackPanel = new StackPanel()
@@ -63,9 +68,15 @@ namespace CupdateInfoGenerater
                     stackPanel.Children.Add(cb);
                     stackPanel.Children.Add(tb);
                     listView.Items.Add(stackPanel);
+                    var binding = new Binding(nameof(CheckBox.State))
+                    {
+                        Source = cb,
+                        Mode = BindingMode.TwoWay,
+                    };
+                    multiBinding.Bindings.Add(binding);
                 }
             }
-            BindingOperations.SetBinding(listView,, multiBinding);
+            BindingOperations.SetBinding(listView, CheckTreeItem.StateProperty, multiBinding);
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)
