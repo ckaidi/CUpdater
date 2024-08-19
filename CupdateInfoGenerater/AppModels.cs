@@ -7,13 +7,20 @@ namespace CupdateInfoGenerater
     {
         public ObservableCollection<Filters> AllFilters { get; } = [];
 
-        public PackFolderModels? PackFolder { get; }
+        public PackFolderModels? PackFolder { get; set; }
     }
 
     public class PackFolderModels : ViewModelBase
     {
-        PackFolderModels[]? SubFolders { get; set; }
-        string[]? Files { get; set; }
+        public string FolderName { get; }
+        public int AllFileCount { get; set; }
+        public List<PackFolderModels> SubFolders { get; } = [];
+        public List<Filters> Files { get; } = [];
+
+        public PackFolderModels(string folderName)
+        {
+            FolderName = folderName;
+        }
     }
 
     public class Filters : ViewModelBase
@@ -47,9 +54,10 @@ namespace CupdateInfoGenerater
             }
         }
 
-        public Filters(string name)
+        public Filters(string name, bool isChecked)
         {
             _name = name;
+            _isChecked = isChecked;
         }
     }
 }

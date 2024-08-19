@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using Newtonsoft.Json;
+using System.IO;
+using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -15,7 +17,7 @@ namespace CupdateInfoGenerater
     /// </summary>
     public partial class MainWindow : Xceed.Wpf.Toolkit.Window
     {
-        private readonly AppModels _appModels = new();
+        private AppModels _appModels = new();
         private bool[] _lastFilter = [];
 
         public MainWindow()
@@ -31,20 +33,10 @@ namespace CupdateInfoGenerater
             LoadPackagePath();
         }
 
-        /// <summary>
-        /// 读取打包路径
-        /// </summary>
-        private void LoadPackagePath()
+        private void LoadPackFolder(PackFolderModels pf)
         {
             FilesListView.Items.Clear();
-            var path = Directory.CreateDirectory(FolderPathTB.Text);
-            var rootCheckTree = new CheckTreeItem()
-            {
-                Header = "根目录",
-                IsExpanded = true,
-            };
-            var count = ListFiles(rootCheckTree, path);
-            if (count == 0)
+            if (pf.AllFileCount == 0)
             {
                 MainScrollViewer.Visibility = Visibility.Collapsed;
                 TipsTB.Visibility = Visibility.Visible;
@@ -52,48 +44,88 @@ namespace CupdateInfoGenerater
             }
             else
             {
+                var rootCheckTree = new CheckTreeItem()
+                {
+                    Header = pf.FolderName,
+                    IsExpanded = true,
+                };
+                CreateFilesControl(rootCheckTree, pf);
                 TipsTB.Visibility = Visibility.Collapsed;
                 MainScrollViewer.Visibility = Visibility.Visible;
                 FilesListView.Items.Add(rootCheckTree);
-            }
-            rootCheckTree.State = CheckBoxState.Checked;
 
-            for (int i = FilterWrapPanel.Children.Count; i < _appModels.AllFilters.Count; i++)
-            {
-                var item = _appModels.AllFilters[i];
-                var ci = new CheckItem("*" + item.Name)
+                for (int i = FilterWrapPanel.Children.Count; i < _appModels.AllFilters.Count; i++)
                 {
-                    Margin = new Thickness(5, 0, 5, 0)
-                };
-                var binding = new Binding(nameof(Filters.IsChecked))
-                {
-                    Source = item,
-                    Mode = BindingMode.TwoWay,
-                };
-                BindingOperations.SetBinding(ci.CheckBox, CheckBox.IsCheckedProperty, binding);
-                FilterWrapPanel.Children.Add(ci);
+                    var item = _appModels.AllFilters[i];
+                    var ci = new CheckItem(item)
+                    {
+                        Margin = new Thickness(5, 0, 5, 0)
+                    };
+                    var binding = new Binding(nameof(Filters.IsChecked))
+                    {
+                        Source = item,
+                        Mode = BindingMode.TwoWay,
+                    };
+                    BindingOperations.SetBinding(ci.CheckBox, CheckBox.IsCheckedProperty, binding);
+                    FilterWrapPanel.Children.Add(ci);
+                }
             }
         }
 
-        private int ListFiles(CheckTreeItem listView, DirectoryInfo path)
+        /// <summary>
+        /// 读取打包路径
+        /// </summary>
+        private void LoadPackagePath()
+        {
+            var path = Directory.CreateDirectory(FolderPathTB.Text);
+            var pf = new PackFolderModels("根目录");
+            pf.AllFileCount = ListFiles(pf, path);
+            _appModels.PackFolder = pf;
+            LoadPackFolder(pf);
+        }
+
+        private int ListFiles(PackFolderModels rootFolder, DirectoryInfo path)
+        {
+            var result = 0;
+            if (path != null)
+            {
+                foreach (var folder in path.GetDirectories())
+                {
+                    var subListView = new PackFolderModels(folder.Name);
+                    subListView.AllFileCount = ListFiles(subListView, folder);
+                    result += subListView.AllFileCount;
+                    rootFolder.SubFolders.Add(subListView);
+                }
+                var files = path.GetFiles();
+                var extHash = _appModels.AllFilters.Where(x => x.IsChecked).Select(x => x.Name).ToHashSet();
+                foreach (var file in files)
+                {
+                    var extensions = Path.GetExtension(file.FullName);
+                    if (!_appModels.AllFilters.Any(x => x.Name == extensions))
+                        _appModels.AllFilters.Add(new Filters(extensions, false));
+                    rootFolder.Files.Add(new Filters(file.Name, true));
+                }
+                result += files.Length;
+            }
+            return result;
+        }
+
+        private void CreateFilesControl(CheckTreeItem listView, PackFolderModels path)
         {
             var multiBinding = new MultiBinding()
             {
                 Converter = new ChechBoxMultiBinding(),
                 Mode = BindingMode.TwoWay,
             };
-            var result = 0;
             if (path != null)
             {
-                foreach (var folder in path.GetDirectories())
+                foreach (var folder in path.SubFolders.Where(x => x.AllFileCount != 0))
                 {
                     var subListView = new CheckTreeItem()
                     {
-                        Header = folder.Name,
+                        Header = folder.FolderName,
                     };
-                    var fileCount = ListFiles(subListView, folder);
-                    result += fileCount;
-                    if (fileCount == 0) continue;
+                    CreateFilesControl(subListView, folder);
                     listView.Items.Add(subListView);
                     var binding = new Binding(nameof(CheckTreeItem.State))
                     {
@@ -102,14 +134,14 @@ namespace CupdateInfoGenerater
                     };
                     multiBinding.Bindings.Add(binding);
                 }
-                var files = path.GetFiles();
+                var files = path.Files;
                 var extHash = _appModels.AllFilters.Where(x => x.IsChecked).Select(x => x.Name).ToHashSet();
                 foreach (var file in files)
                 {
-                    var extensions = Path.GetExtension(file.FullName);
+                    var extensions = Path.GetExtension(file.Name);
                     if (!_appModels.AllFilters.Any(x => x.Name == extensions))
-                        _appModels.AllFilters.Add(new Filters(extensions));
-                    var ci = new CheckItem(file.Name);
+                        _appModels.AllFilters.Add(new Filters(extensions, false));
+                    var ci = new CheckItem(file);
                     listView.Items.Add(ci);
                     var binding = new Binding(nameof(CheckBox.State))
                     {
@@ -118,10 +150,8 @@ namespace CupdateInfoGenerater
                     };
                     multiBinding.Bindings.Add(binding);
                 }
-                result += files.Length;
             }
             BindingOperations.SetBinding(listView, CheckTreeItem.StateProperty, multiBinding);
-            return result;
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)
@@ -185,12 +215,40 @@ namespace CupdateInfoGenerater
 
         private void OpenButtonClick(object sender, RoutedEventArgs e)
         {
-
+            var dialog = new OpenFileDialog()
+            {
+                Filter = "*.json|*.json",
+            };
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                var json = File.ReadAllText(dialog.FileName);
+                var r = JsonConvert.DeserializeObject<AppModels>(json);
+                if (r == null)
+                {
+                    Xceed.Wpf.Toolkit.MessageBox.Show(this, "文件读取错误");
+                    return;
+                }
+                _appModels = r;
+                if (_appModels.PackFolder != null)
+                {
+                    FilterWrapPanel.Children.Clear();
+                    LoadPackFolder(_appModels.PackFolder);
+                }
+            }
         }
 
         private void SaveButtonClick(object sender, RoutedEventArgs e)
         {
-
+            var dialog = new SaveFileDialog()
+            {
+                FileName = "untitled.json",
+                Filter = "*.json|*.json",
+            };
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                var json = JsonConvert.SerializeObject(_appModels, Formatting.Indented);
+                File.WriteAllText(dialog.FileName, json);
+            }
         }
     }
 }

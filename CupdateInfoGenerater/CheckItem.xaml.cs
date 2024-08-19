@@ -12,16 +12,16 @@ namespace CupdateInfoGenerater
 
         public CheckItem(Filters checkItemModel)
         {
-            DataContext = checkItemModel;
             InitializeComponent();
             CheckBox = _checkbox;
+            DataContext = checkItemModel;
         }
 
-        public CheckItem(string name)
+        public CheckItem(string name, bool isChecked)
         {
-            DataContext = new Filters(name);
             InitializeComponent();
             CheckBox = _checkbox;
+            DataContext = new Filters(name, isChecked);
         }
     }
 }
