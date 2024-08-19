@@ -8,7 +8,7 @@
               BorderBrush="LightGray"
               BorderThickness="1"
         mc:Ignorable="d"
-        Title="" Height="450" Width="800">
+        Title="CPackager" Height="450" Width="800">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -39,7 +39,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="auto"/>
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="FolderPathTB"/>
+            <TextBox Text="{Binding Path}"/>
             <Button Grid.Column="1" Margin="3" Content="选择文件夹" Padding="3,0" Click="Button_Click"/>
         </Grid>
         <Border Grid.Row="1" BorderThickness="1" BorderBrush="LightGray" CornerRadius="6">

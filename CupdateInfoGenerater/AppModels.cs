@@ -1,12 +1,25 @@
 ﻿using System.Collections.ObjectModel;
+using Xceed.Wpf.Toolkit;
 using Xceed.Wpf.Toolkit.Core;
 
 namespace CupdateInfoGenerater
 {
     internal class AppModels : ViewModelBase
     {
+        private string? _path;
+        public string? Path
+        {
+            get => _path;
+            set
+            {
+                if (_path != value)
+                {
+                    _path = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
         public ObservableCollection<Filters> AllFilters { get; } = [];
-
         public PackFolderModels? PackFolder { get; set; }
     }
 
@@ -26,7 +39,7 @@ namespace CupdateInfoGenerater
     public class Filters : ViewModelBase
     {
         private string _name;
-        private bool _isChecked;
+        private CheckBoxState _isChecked;
 
         public string Name
         {
@@ -41,20 +54,31 @@ namespace CupdateInfoGenerater
             }
         }
 
-        public bool IsChecked
+        public CheckBoxState IsChecked
         {
             get => _isChecked;
             set
             {
                 if (_isChecked != value)
                 {
-                    _isChecked = value;
+                    switch (value)
+                    {
+                        case CheckBoxState.Checked:
+                            _isChecked = CheckBoxState.Checked;
+                            break;
+                        case CheckBoxState.Indeterminate:
+                        case CheckBoxState.UnChecked:
+                            _isChecked = CheckBoxState.UnChecked;
+                            break;
+                        default:
+                            throw new InvalidOperationException();
+                    }
                     OnPropertyChanged();
                 }
             }
         }
 
-        public Filters(string name, bool isChecked)
+        public Filters(string name, CheckBoxState isChecked)
         {
             _name = name;
             _isChecked = isChecked;

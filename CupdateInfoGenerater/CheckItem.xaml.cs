@@ -1,5 +1,6 @@
 ﻿using UserControl = System.Windows.Controls.UserControl;
 using CheckBox = Xceed.Wpf.Toolkit.CheckBox;
+using Xceed.Wpf.Toolkit;
 
 namespace CupdateInfoGenerater
 {
@@ -17,7 +18,7 @@ namespace CupdateInfoGenerater
             DataContext = checkItemModel;
         }
 
-        public CheckItem(string name, bool isChecked)
+        public CheckItem(string name, CheckBoxState isChecked)
         {
             InitializeComponent();
             CheckBox = _checkbox;

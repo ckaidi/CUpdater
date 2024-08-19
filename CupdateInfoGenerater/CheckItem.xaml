@@ -12,7 +12,7 @@
     </UserControl.Resources>
     <StackPanel Orientation="Horizontal">
         <xceed:CheckBox x:Name="_checkbox" 
-                        State="{Binding IsChecked,Converter={StaticResource BoolToCheckBoxStateConverter},Mode=TwoWay}"/>
+                        State="{Binding IsChecked}"/>
         <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
     </StackPanel>
 </UserControl>
