@@ -8,7 +8,7 @@
               BorderBrush="LightGray"
               BorderThickness="1"
         mc:Ignorable="d"
-        Title="文件打包" Height="450" Width="800">
+        Title="" Height="450" Width="800">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -26,18 +26,13 @@
                 <ResourceDictionary
                     Source="pack://application:,,,/Xceed.Wpf.Toolkit;component/Style/ProgressBarStyle.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <!--<DataTemplate x:Key="DT">
-                <StackPanel Orientation="Horizontal">
-                    <xceed:CheckBox/>
-                    <TextBlock Text="{Binding .}" VerticalAlignment="Center"/>
-                </StackPanel>
-            </DataTemplate>-->
         </ResourceDictionary>
     </Window.Resources>
-    <Grid Margin="5">
+    <Grid Margin="5,5,5,0">
         <Grid.RowDefinitions>
             <RowDefinition Height="32"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="32"/>
         </Grid.RowDefinitions>
         <Grid>
             <Grid.ColumnDefinitions>
@@ -48,9 +43,36 @@
             <Button Grid.Column="1" Margin="3" Content="选择文件夹" Padding="3,0" Click="Button_Click"/>
         </Grid>
         <Border Grid.Row="1" BorderThickness="1" BorderBrush="LightGray" CornerRadius="6">
-            <ScrollViewer VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
-                <TreeView x:Name="FilesListView"/>
-            </ScrollViewer>
+            <Grid>
+                <TabControl SelectionChanged="TabControlSelectionChanged">
+                    <TabItem Header="文件">
+                        <ScrollViewer x:Name="MainScrollViewer" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
+                            <TreeView x:Name="FilesListView"/>
+                        </ScrollViewer>
+                    </TabItem>
+                    <TabItem Header="过滤器" >
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="24"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="选择无需打包的文件类型:" VerticalAlignment="Center" FontWeight="Bold"/>
+                            <WrapPanel Grid.Row="1" x:Name="FilterWrapPanel"/>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
+                <TextBlock FontWeight="Bold" FontSize="20" Visibility="Collapsed" x:Name="TipsTB" TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
         </Border>
+        <Grid Grid.Row="2" Margin="0,3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button Margin="5,0" Width="120" Content="打包" Click="GenerateButtonClick"/>
+            <Button Margin="5,0" Width="120" Content="打开" Click="OpenButtonClick" Grid.Column="1"/>
+            <Button Margin="5,0" Width="120" Content="保存" Click="SaveButtonClick" Grid.Column="2"/>
+        </Grid>
     </Grid>
 </xceed:Window>
