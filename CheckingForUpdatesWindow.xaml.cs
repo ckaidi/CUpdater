@@ -74,7 +74,7 @@ namespace CUpdater
                         }
                         Dispatcher.Invoke(() =>
                         {
-                            var update = new UpdateAvailableWindow(currentVersion,_publishFileModel);
+                            var update = new UpdateAvailableWindow(currentVersion, _publishFileModel);
                             update.Show();
                             Close();
                         });
@@ -83,10 +83,19 @@ namespace CUpdater
             }
             catch (TaskCanceledException)
             {
+                Dispatcher.Invoke(() =>
+                {
+                    Xceed.Wpf.Toolkit.MessageBox.Show(this, "网络请求错误,请稍候再试");
+                    Close();
+                });
             }
             catch (HttpRequestException)
             {
-                //Xceed.Wpf.Toolkit.MessageBox.Show(this,"网络请求")
+                Dispatcher.Invoke(() =>
+                {
+                    Xceed.Wpf.Toolkit.MessageBox.Show(this, "网络请求错误,请稍候再试");
+                    Close();
+                });
             }
         }
 

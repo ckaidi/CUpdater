@@ -1,12 +1,10 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -68,6 +66,11 @@ namespace CUpdater
 
         private async void DownloadInstallOnClick(object sender, RoutedEventArgs e)
         {
+            if (App.AppProcess != null && !App.AppProcess.HasExited)
+            {
+                App.AppProcess.Kill();
+                Thread.Sleep(1000);
+            }
             var updaterFolder = Directory.CreateDirectory(AppDomain.CurrentDomain.BaseDirectory);
             var tempPath = Path.GetTempPath();
             var versionHash = ComputeSha256Hash(CheckingForUpdatesWindow.PublishJsonText);
@@ -98,7 +101,6 @@ namespace CUpdater
             {
                 newUpdateFile = latestFileDict.Values.ToList();
             }
-
             var newDownloadFile = newUpdateFile.Where(x => !File.Exists(Path.Combine(downloadPath, x.Name))).ToArray();
             if (newDownloadFile.Length > 0)
             {
@@ -157,8 +159,6 @@ namespace CUpdater
                     DownloadProgressTB.Text = $"正在下载  {allFilesSizeMB:f2}MB/{allFilesSizeMB:f2}MB(100%)";
                 });
             }
-            if (App.AppProcess != null && !App.AppProcess.HasExited)
-                App.AppProcess.Kill();
             _updaterFile = newUpdateFile.Where(x => x.Name.StartsWith("./Updater")).ToList();
             newUpdateFile = newUpdateFile.Where(x => !x.Name.StartsWith("./Updater")).ToList();
             foreach (var file in newUpdateFile)
@@ -202,7 +202,8 @@ namespace CUpdater
             }
             var json = JsonConvert.SerializeObject(_lastestApp, Formatting.Indented);
             File.WriteAllText(Path.Combine(installPath.FullName, "app.json"), json);
-            Process.Start(AppModel.StartUpApp);
+            var p = Directory.GetParent(Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory).FullName);
+            Process.Start(Path.Combine(p.FullName, AppModel.StartUpApp));
             Close();
         }
 

@@ -17,6 +17,6 @@ namespace CUpdater
         /// <summary>
         /// 启动程序路径
         /// </summary>
-        public static string StartUpApp { get; set; } = "D:\\codes\\csharp\\CUpdater\\bin\\x64\\SDSyncApp.exe";
+        public static string StartUpApp { get; set; } = "SDSyncApp.exe";
     }
 }

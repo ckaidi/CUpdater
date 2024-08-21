@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Threading;
 using System.Windows;
 
 namespace CUpdater
@@ -13,7 +14,7 @@ namespace CUpdater
         private void Application_Startup(object sender, StartupEventArgs e)
         {
             string[] args = e.Args;
-            if (args.Length == 1)
+            if (args.Length >= 1)
             {
                 if (int.TryParse(args[0], out var processId))
                 {
@@ -26,6 +27,14 @@ namespace CUpdater
                     catch { }
                 }
             }
+            if (args.Length >= 2)
+            {
+                if (args[1] == "debug")
+                {
+                    Thread.Sleep(20000);
+                }
+            }
+
 
 
             var mainWindow = new CheckingForUpdatesWindow();
