@@ -1,10 +1,13 @@
-﻿using Newtonsoft.Json;
+﻿using CUpdater;
+using Newtonsoft.Json;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Documents;
 using System.Windows.Media.Imaging;
 using Xceed.Wpf.Toolkit;
 using Xceed.Wpf.Toolkit.CheckTreeItem;
@@ -28,6 +31,7 @@ namespace CupdateInfoGenerater
             DataContext = _appModels;
             InitializeComponent();
             Loaded += MainWindow_Loaded;
+            GuiDB.DBExtensions.UseTheScrollViewerScrolling(MainMarkdownViewer);
         }
 
         private void MainWindow_Loaded(object? sender, RoutedEventArgs? e)
@@ -113,7 +117,7 @@ namespace CupdateInfoGenerater
             return result;
         }
 
-        private void CreateFilesControl(CheckTreeItem listView, PackFolderModels path)
+        private void CreateFilesControl(CheckTreeItem listView, PackFolderModels path, bool ignoreFilter = false)
         {
             var multiBinding = new MultiBinding()
             {
@@ -138,7 +142,6 @@ namespace CupdateInfoGenerater
                     multiBinding.Bindings.Add(binding);
                 }
                 var files = path.Files;
-                var extHash = _appModels.AllFilters.Where(x => x.IsChecked == CheckBoxState.Checked).Select(x => x.Name).ToHashSet();
                 foreach (var file in files)
                 {
                     var extensions = Path.GetExtension(file.Name);
@@ -151,16 +154,26 @@ namespace CupdateInfoGenerater
                         Source = ci.CheckBox,
                         Mode = BindingMode.TwoWay,
                     };
+                    var stateBinding = new Binding(nameof(Filters.IsChecked))
+                    {
+                        Source = file,
+                        Mode = BindingMode.TwoWay,
+                    };
+                    BindingOperations.SetBinding(ci.CheckBox, CheckBox.StateProperty, stateBinding);
                     multiBinding.Bindings.Add(binding);
                 }
             }
             BindingOperations.SetBinding(listView, CheckTreeItem.StateProperty, multiBinding);
         }
 
+        /// <summary>
+        /// 选取打包路径
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             var openFileDialog = new FolderBrowserDialog();
-
             if (openFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 var folderPath = openFileDialog.SelectedPath;
@@ -189,24 +202,32 @@ namespace CupdateInfoGenerater
                     if (isUpdate && FilesListView.Items.Count > 0 && FilesListView.Items[0] is CheckTreeItem rootItem)
                     {
                         var extExclued = _appModels.AllFilters.Where(x => x.IsChecked == CheckBoxState.Checked).Select(x => x.Name).ToHashSet();
-                        foreach (var item in rootItem.Items)
-                        {
-                            switch (item)
-                            {
-                                case CheckItem ci when ci.DataContext is Filters checkItemModel:
-                                    var ext = Path.GetExtension(checkItemModel.Name);
-                                    if (extExclued.Contains(ext))
-                                        checkItemModel.IsChecked = CheckBoxState.UnChecked;
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
+                        UnCheckedFilters(extExclued, rootItem);
                     }
                 }
                 else if (tabItem.Header.ToString() == "过滤器")
                 {
                     _lastFilter = _appModels.AllFilters.Select(x => x.IsChecked).ToArray();
+                }
+            }
+        }
+
+        private static void UnCheckedFilters(HashSet<string> filters, CheckTreeItem rootItem)
+        {
+            foreach (var item in rootItem.Items)
+            {
+                switch (item)
+                {
+                    case CheckItem ci when ci.DataContext is Filters checkItemModel:
+                        var ext = Path.GetExtension(checkItemModel.Name);
+                        if (filters.Contains(ext))
+                            checkItemModel.IsChecked = CheckBoxState.UnChecked;
+                        break;
+                    case CheckTreeItem checkTreeItem:
+                        UnCheckedFilters(filters, checkTreeItem);
+                        break;
+                    default:
+                        break;
                 }
             }
         }
@@ -218,41 +239,70 @@ namespace CupdateInfoGenerater
         /// <param name="e"></param>
         private void GenerateButtonClick(object sender, RoutedEventArgs e)
         {
+            if (!(_appModels?.Path != null && _appModels?.PackFolder != null && _appModels.VersionInfo != null))
+            {
+                Xceed.Wpf.Toolkit.MessageBox.Show(this, "请选择需要打包的文件夹");
+                return;
+            }
             var dialog = new SaveFileDialog()
             {
-                FileName = "files",
+                FileName = "app",
                 Filter = "*.json|*.json",
             };
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                var result = new List<FileHash>();
-                if (_appModels?.PackFolder == null || _appModels?.Path == null)
+                var result = new PublishFileModel(new PublishVersion(_appModels.VersionInfo.Version));
+                if (_appModels.VersionInfo.Description != null && File.Exists(_appModels.VersionInfo.Description))
                 {
-                    Xceed.Wpf.Toolkit.MessageBox.Show(this, "请选择需要打包的文件夹");
-                    return;
+                    result.Version.Description = File.ReadAllText(_appModels.VersionInfo.Description);
                 }
-                CalculateFileHashAndVersion(result, _appModels.PackFolder, _appModels.Path);
-                var json = JsonConvert.SerializeObject(result.ToArray(), Formatting.Indented);
-                File.WriteAllText(dialog.FileName, json);
+
+                var isSuccess = CalculateFileHashAndVersion(result.Files, _appModels.PackFolder, "./");
+                if (isSuccess)
+                {
+                    var json = JsonConvert.SerializeObject(result, Formatting.Indented);
+                    File.WriteAllText(dialog.FileName, json);
+                }
             }
         }
 
-        private void CalculateFileHashAndVersion(List<FileHash> fileHashes, PackFolderModels packFolder, string root)
+        private bool CalculateFileHashAndVersion(List<FileHash> fileHashes, PackFolderModels packFolder, string root)
         {
             foreach (var item in packFolder.Files)
             {
-                var filePath = Path.Join(root, item.Name);
-                var fileInfo = FileVersionInfo.GetVersionInfo(filePath);
-                var version = fileInfo.ProductVersion;
-                version ??= new FileInfo(filePath).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss");
+                if (item.IsChecked != CheckBoxState.Checked) continue;
+                var filePath = Path.Join(_appModels.Path, Path.Join(root, item.Name));
+                if (!File.Exists(filePath))
+                {
+                    Xceed.Wpf.Toolkit.MessageBox.Show(this, $"{filePath}文件不存在");
+                    return false;
+                }
                 var hash = ComputeFileHash(filePath);
-                fileHashes.Add(new FileHash(item.Name, hash, version));
+                var fileInfo = new FileInfo(filePath);
+                fileHashes.Add(new FileHash(Path.Join(root, item.Name), hash, fileInfo.Length / 1024));
             }
 
             foreach (var item in packFolder.SubFolders)
             {
-                CalculateFileHashAndVersion(fileHashes, item, Path.Join(root, item.FolderName));
+                if (!CalculateFileHashAndVersion(fileHashes, item, Path.Join(root, item.FolderName)))
+                    return false;
             }
+            return true;
+        }
+
+        /// <summary>
+        /// 求相对路径
+        /// </summary>
+        /// <param name="absolutePath"></param>
+        /// <param name="basePath"></param>
+        /// <returns></returns>
+        private static string CalculateRelativePath(string absolutePath, string basePath)
+        {
+            var baseUri = new Uri(basePath);
+            var targetUri = new Uri(absolutePath);
+
+            var relativeUri = baseUri.MakeRelativeUri(targetUri);
+            return Uri.UnescapeDataString(relativeUri.ToString());
         }
 
         /// <summary>
@@ -294,12 +344,17 @@ namespace CupdateInfoGenerater
                 {
                     FilterWrapPanel.Children.Clear();
                     LoadPackFolder(_appModels.PackFolder);
+                    _lastFilter = _appModels.AllFilters.Select(x => x.IsChecked).ToArray();
                 }
             }
         }
 
         private void SaveButtonClick(object sender, RoutedEventArgs e)
         {
+            if (_appModels?.VersionInfo == null)
+            {
+                return;
+            }
             var dialog = new SaveFileDialog()
             {
                 FileName = "untitled.json",

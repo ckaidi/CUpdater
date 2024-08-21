@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using CUpdater;
+using System.Collections.ObjectModel;
 using Xceed.Wpf.Toolkit;
 using Xceed.Wpf.Toolkit.Core;
 
@@ -7,6 +8,10 @@ namespace CupdateInfoGenerater
     internal class AppModels : ViewModelBase
     {
         private string? _path;
+
+        /// <summary>
+        /// 打包路径
+        /// </summary>
         public string? Path
         {
             get => _path;
@@ -19,8 +24,21 @@ namespace CupdateInfoGenerater
                 }
             }
         }
+
+        /// <summary>
+        /// 过滤器
+        /// </summary>
         public ObservableCollection<Filters> AllFilters { get; } = [];
+
+        /// <summary>
+        /// 文件的嵌套结构
+        /// </summary>
         public PackFolderModels? PackFolder { get; set; }
+
+        /// <summary>
+        /// 版本信息
+        /// </summary>
+        public PublishVersion? VersionInfo { get; set; } = new();
     }
 
     public class PackFolderModels : ViewModelBase

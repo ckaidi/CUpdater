@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,8 +18,9 @@ namespace CUpdater
     /// </summary>
     public partial class CheckingForUpdatesWindow : Xceed.Wpf.Toolkit.Window
     {
-        private AppModel _appModel = new AppModel();
-        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        public static string PublishJsonText;
+        public PublishFileModel _publishFileModel;
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
         /// <summary>
         /// Create the window that tells the user that SparkleUpdater is checking
@@ -27,7 +29,6 @@ namespace CUpdater
         public CheckingForUpdatesWindow()
         {
             InitializeComponent();
-            Closing += CheckingForUpdatesWindow_Closing;
 
             var uri = new Uri("pack://application:,,,/icon.ico");
             var bitmapImage = new BitmapImage(uri);
@@ -38,23 +39,45 @@ namespace CUpdater
             Loaded += CheckingForUpdatesWindow_Loaded;
         }
 
-        private async void CheckingForUpdatesWindow_Loaded(object sender, RoutedEventArgs e)
+        private void CheckingForUpdatesWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            await CheckUpdateAsync();
+            CheckUpdateAsync();
         }
 
-        public async Task CheckUpdateAsync()
+        public async void CheckUpdateAsync()
         {
             try
             {
                 using (var httpClient = new HttpClient())
                 {
-                    using (var response = await httpClient.GetAsync(_appModel.URL + "app.json", HttpCompletionOption.ResponseHeadersRead, _cancellationTokenSource.Token))
+                    using (var response = await httpClient.GetAsync(AppModel.URL + "app.json", HttpCompletionOption.ResponseHeadersRead, _cancellationTokenSource.Token))
                     {
-                        var responseText = await response.Content.ReadAsStringAsync();
-                        var appInfo = JsonConvert.DeserializeObject<AppInfo>(responseText);
-                        new UpdateAvailableWindow(appInfo).Show();
-                        Close();
+                        PublishJsonText = await response.Content.ReadAsStringAsync();
+                        _publishFileModel = JsonConvert.DeserializeObject<PublishFileModel>(PublishJsonText);
+                        PublishFileModel currentVersion = null;
+                        if (File.Exists("../app.json"))
+                        {
+                            var thisPublishFileModelJson = File.ReadAllText("../app.json");
+                            if (thisPublishFileModelJson != null)
+                            {
+                                currentVersion = JsonConvert.DeserializeObject<PublishFileModel>(thisPublishFileModelJson);
+                                if (currentVersion != null && VersionCompare(currentVersion.Version.Version, _publishFileModel.Version.Version))
+                                {
+                                    Application.Current.MainWindow.Dispatcher.Invoke(() =>
+                                    {
+                                        Xceed.Wpf.Toolkit.MessageBox.ShowSingle(Icon, "当前已是最新版本");
+                                        Close();
+                                    });
+                                    return;
+                                }
+                            }
+                        }
+                        Dispatcher.Invoke(() =>
+                        {
+                            var update = new UpdateAvailableWindow(currentVersion,_publishFileModel);
+                            update.Show();
+                            Close();
+                        });
                     }
                 }
             }
@@ -63,12 +86,15 @@ namespace CUpdater
             }
             catch (HttpRequestException)
             {
+                //Xceed.Wpf.Toolkit.MessageBox.Show(this,"网络请求")
             }
         }
 
-        private void CheckingForUpdatesWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        private bool VersionCompare(string oldVersion, string newVersion)
         {
-            Closing -= CheckingForUpdatesWindow_Closing;
+            var vOld = new Version(oldVersion);
+            var vNew = new Version(newVersion);
+            return vOld.CompareTo(vNew) >= 0;
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)

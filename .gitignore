@@ -6,3 +6,5 @@
 /obj
 /CupdateInfoGenerater/bin/x64/Debug/net8.0-windows
 /CupdateInfoGenerater/obj
+/bin/x64
+/.vs/CUpdater.csproj.dtbcache.json

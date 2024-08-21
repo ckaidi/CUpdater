@@ -35,6 +35,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Markdig.Wpf" Version="0.5.0.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
     <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
@@ -42,6 +43,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Xceed.Wpf.Toolkit\Xceed.Wpf.Toolkit.csproj" />
+    <ProjectReference Include="..\CUpdater.csproj" />
   </ItemGroup>
 
 </Project>

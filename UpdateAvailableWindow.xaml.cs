@@ -1,6 +1,16 @@
-﻿using System.Linq;
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
 using System.Windows;
-using System.Windows.Navigation;
 
 namespace CUpdater
 {
@@ -14,23 +24,24 @@ namespace CUpdater
         private bool _hasFinishedNavigatingToAboutBlank = false;
         private string _notes = "";
         private bool _wasResponseSent = false;
-        private AppInfo _appInfo;
+        private PublishFileModel _currentApp;
+        private PublishFileModel _lastestApp;
+        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private List<FileHash> _updaterFile = new List<FileHash>();
 
         /// <summary>
         /// Initialize the available update window with no initial date context
         /// (and thus no initial information on downloadable releases to show
         /// to the user)
         /// </summary>
-        public UpdateAvailableWindow(AppInfo appInfo) : base(true)
+        public UpdateAvailableWindow(PublishFileModel currentVersion, PublishFileModel lastestVersion) : base(true)
         {
-            _appInfo = appInfo;
+            _currentApp = currentVersion;
+            _lastestApp = lastestVersion;
+            DataContext = _lastestApp;
             InitializeComponent();
-        }
-
-        private void UpdateAvailableWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-            ReleaseNotesBrowser.Navigated -= ReleaseNotesBrowser_Navigated;
-            Closing -= UpdateAvailableWindow_Closing;
+            TitleHeader.Text = $"检测到新版本:{_lastestApp.Version.Version}";
+            GuiDB.DBExtensions.UseTheScrollViewerScrolling(MainMarkdownViewer);
         }
 
         /// <summary>
@@ -45,51 +56,196 @@ namespace CUpdater
             }
         }
 
-        /// <summary>
-        /// Show the release notes to the end user. Release notes should be in HTML.
-        /// 
-        /// There is some bizarre thing where the WPF browser doesn't navigate to the release notes unless you successfully navigate to
-        /// about:blank first. I don't know why. I feel like this is a Terrible Bad Fix, but...it works for now...
-        /// </summary>
-        /// <param name="htmlNotes">The HTML notes to show to the end user</param>
-        public void ShowReleaseNotes(string htmlNotes)
+        private void SkipButtonOnClick(object sender, RoutedEventArgs e)
         {
-            _notes = htmlNotes;
-            ReleaseNotesBrowser.Dispatcher.Invoke(() =>
-            {
+            Close();
+        }
 
-                if (ReleaseNotesBrowser.IsLoaded)
+        private void RemindMeLaterOnClick(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
+
+        private async void DownloadInstallOnClick(object sender, RoutedEventArgs e)
+        {
+            var updaterFolder = Directory.CreateDirectory(AppDomain.CurrentDomain.BaseDirectory);
+            var tempPath = Path.GetTempPath();
+            var versionHash = ComputeSha256Hash(CheckingForUpdatesWindow.PublishJsonText);
+            var downloadPath = Path.Combine(tempPath, versionHash);
+            if (!Directory.Exists(downloadPath))
+                Directory.CreateDirectory(downloadPath);
+            var latestFileDict = _lastestApp.Files.ToDictionary(x => x.Name);
+            var newUpdateFile = new List<FileHash>();
+            var installPath = updaterFolder.Parent;
+            if (_currentApp != null)
+            {
+                var currentFileDict = _currentApp.Files.ToDictionary(x => x.Name);
+                foreach (var filePath in latestFileDict.Keys)
                 {
-                    if (_hasFinishedNavigatingToAboutBlank)
+                    if (File.Exists(Path.Combine(installPath.FullName, filePath.Replace("./", ""))))
                     {
-                        ReleaseNotesBrowser.NavigateToString(_notes);
+                        if (currentFileDict.ContainsKey(filePath))
+                        {
+                            var currentFile = currentFileDict[filePath];
+                            var newFile = latestFileDict[filePath];
+                            if (currentFile.Hash == newFile.Hash) continue;
+                        }
                     }
-                    // else will catch up when navigating to about:blank is done
+                    newUpdateFile.Add(latestFileDict[filePath]);
                 }
-                else
+            }
+            else
+            {
+                newUpdateFile = latestFileDict.Values.ToList();
+            }
+
+            var newDownloadFile = newUpdateFile.Where(x => !File.Exists(Path.Combine(downloadPath, x.Name))).ToArray();
+            if (newDownloadFile.Length > 0)
+            {
+                // 下载所需文件
+                var allFilesSizeMB = newDownloadFile.Sum(x => x.Size) / 1024d;
+                DownloadProgressBar.Visibility = Visibility.Visible;
+                DownloadProgressBar.Value = 0;
+                double totalRead = 0;
+                foreach (var fileHash in newDownloadFile)
                 {
-                    // don't do anything until the web browser is loaded
-                    ReleaseNotesBrowser.Loaded += ReleaseNotesBrowser_Loaded;
+                    var startTotal = totalRead + fileHash.Size * 1024;
+                    var outputPath = fileHash.FullName(downloadPath);
+                    var folder = Directory.GetParent(outputPath);
+                    if (!folder.Exists) folder.Create();
+                    using (var httpClient = new HttpClient())
+                    {
+                        using (var response = await httpClient.GetAsync(AppModel.URL + fileHash.Name.Replace("./", ""), HttpCompletionOption.ResponseHeadersRead, _cancellationTokenSource.Token))
+                        {
+                            response.EnsureSuccessStatusCode();
+                            using (var contentStream = await response.Content.ReadAsStreamAsync())
+                            {
+                                using (var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                                {
+                                    var buffer = new byte[8192];
+                                    var isMoreToRead = true;
+                                    double percentage;
+                                    do
+                                    {
+                                        var read = await contentStream.ReadAsync(buffer, 0, buffer.Length);
+                                        if (read == 0)
+                                        {
+                                            isMoreToRead = false;
+                                        }
+                                        else
+                                        {
+                                            await fileStream.WriteAsync(buffer, 0, read);
+                                            totalRead += read;
+                                            percentage = (double)totalRead / (1024 * 1024) / allFilesSizeMB * 100;
+                                            totalRead = Math.Min(totalRead, startTotal);
+                                            Dispatcher.Invoke(() =>
+                                            {
+                                                DownloadProgressBar.Value = percentage;
+                                                DownloadProgressTB.Text = $"正在下载  {totalRead / 1024 / 1024:f2}MB/{allFilesSizeMB:f2}MB({DownloadProgressBar.Value:f2}%)";
+                                            });
+                                        }
+                                    }
+                                    while (isMoreToRead && !_cancellationTokenSource.IsCancellationRequested);
+                                }
+                            }
+                        }
+                    }
                 }
+                Dispatcher.Invoke(() =>
+                {
+                    DownloadProgressBar.Value = 100;
+                    DownloadProgressTB.Text = $"正在下载  {allFilesSizeMB:f2}MB/{allFilesSizeMB:f2}MB(100%)";
+                });
+            }
+            if (App.AppProcess != null && !App.AppProcess.HasExited)
+                App.AppProcess.Kill();
+            _updaterFile = newUpdateFile.Where(x => x.Name.StartsWith("./Updater")).ToList();
+            newUpdateFile = newUpdateFile.Where(x => !x.Name.StartsWith("./Updater")).ToList();
+            foreach (var file in newUpdateFile)
+            {
+                var installPa = file.FullName(installPath.FullName);
+                if (File.Exists(installPa))
+                {
+                    if (IsFileLocked(installPa))
+                    {
+                        Xceed.Wpf.Toolkit.MessageBox.Show(this, $"{installPa}文件被占用,请稍候再试");
+                        return;
+                    }
+                }
+            }
+            Dispatcher.Invoke(() =>
+            {
+                DownloadProgressBar.Visibility = Visibility.Visible;
+                DownloadProgressBar.Value = 0;
+                DownloadProgressTB.Text = $"正在安装  {0}/{newUpdateFile.Count}(0%)";
             });
+            double index = 0;
+            foreach (var file in newUpdateFile)
+            {
+                var installPa = file.FullName(installPath.FullName);
+                if (File.Exists(installPa))
+                {
+                    File.Delete(installPa);
+                }
+                var folderName = Path.GetDirectoryName(file.FullName(installPath.FullName));
+                var folder = Directory.CreateDirectory(folderName);
+                if (!folder.Exists)
+                    folder.Create();
+                File.Copy(file.FullName(downloadPath), file.FullName(installPath.FullName));
+                index += 1;
+                double percent = index / newUpdateFile.Count * 100;
+                Dispatcher.Invoke(() =>
+                {
+                    DownloadProgressBar.Value = percent;
+                    DownloadProgressTB.Text = $"正在安装  {index}/{newUpdateFile.Count}({percent}%)";
+                });
+            }
+            var json = JsonConvert.SerializeObject(_lastestApp, Formatting.Indented);
+            File.WriteAllText(Path.Combine(installPath.FullName, "app.json"), json);
+            Process.Start(AppModel.StartUpApp);
+            Close();
         }
 
-        private void ReleaseNotesBrowser_Loaded(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// 检查文件是否被占用
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
+        private static bool IsFileLocked(string filePath)
         {
-            // see https://stackoverflow.com/a/15209861/3938401
-            ReleaseNotesBrowser.Loaded -= ReleaseNotesBrowser_Loaded;
-            ReleaseNotesBrowser.Dispatcher.Invoke(() =>
+            try
             {
-                ReleaseNotesBrowser.NavigateToString("about:blank");
-            });
+                // 尝试以独占模式打开文件
+                using (FileStream stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    stream.Close();
+                }
+            }
+            catch (IOException)
+            {
+                // 如果出现IO异常，认为文件可能被占用
+                return true;
+            }
+            // 如果没有异常，认为文件没有被占用
+            return false;
         }
 
-        private void ReleaseNotesBrowser_Navigated(object sender, NavigationEventArgs e)
+        // 使用 SHA256 计算字符串的哈希值
+        public static string ComputeSha256Hash(string rawData)
         {
-            if (!_hasFinishedNavigatingToAboutBlank)
+            // 创建一个 SHA256   
+            using (SHA256 sha256Hash = SHA256.Create())
             {
-                ReleaseNotesBrowser.NavigateToString(_notes);
-                _hasFinishedNavigatingToAboutBlank = true;
+                // 计算字符串的哈希值
+                byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(rawData));
+
+                // 将字节转换为一个十六进制字符串
+                StringBuilder builder = new StringBuilder();
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    builder.Append(bytes[i].ToString("x2"));
+                }
+                return builder.ToString();
             }
         }
     }
