@@ -12,7 +12,7 @@ namespace CUpdater
         /// 程序名称
         /// </summary>
         public static string EN { get; set; } = "SDSyncApp";
-        public static string URL { get; set; } = "http://127.0.0.1:5500/";
+        public static string URL { get; set; } = "https://gdad.chenkaidi.top/softwares/sdsyncapp/";
 
         /// <summary>
         /// 启动程序路径

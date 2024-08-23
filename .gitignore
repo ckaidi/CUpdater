@@ -8,3 +8,4 @@
 /CupdateInfoGenerater/obj
 /bin/x64
 /.vs/CUpdater.csproj.dtbcache.json
+/CupdateInfoGenerater/bin/x64/Release/net8.0-windows
