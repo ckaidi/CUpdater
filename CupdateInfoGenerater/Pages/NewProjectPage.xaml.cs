@@ -14,6 +14,7 @@ namespace CupdateInfoGenerater
         {
             _mainWindow = mainWindow;
             InitializeComponent();
+            IconImage.Source = mainWindow.ChromeIcon;
         }
 
         /// <summary>

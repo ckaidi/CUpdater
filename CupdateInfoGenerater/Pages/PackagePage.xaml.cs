@@ -272,10 +272,8 @@ namespace CupdateInfoGenerater
             }
 
             foreach (var item in packFolder.SubFolders)
-            {
                 if (!CalculateFileHashAndVersion(fileHashes, item, Path.Join(root, item.FolderName)))
                     return false;
-            }
             return true;
         }
 
@@ -346,9 +344,7 @@ namespace CupdateInfoGenerater
         private void SaveButtonClick(object sender, RoutedEventArgs e)
         {
             if (AppModel?.VersionInfo == null)
-            {
                 return;
-            }
             var dialog = new SaveFileDialog()
             {
                 FileName = "untitled.json",

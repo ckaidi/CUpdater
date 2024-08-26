@@ -1,6 +1,8 @@
 ﻿using CupdateInfoGenerater;
+using System;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
+using static Xceed.Wpf.Toolkit.ByteArrayExtensions;
 
 namespace CupdateInfoGenerater
 {
@@ -16,7 +18,9 @@ namespace CupdateInfoGenerater
         {
             _projectPage = new NewProjectPage(this);
             _packagePage = new PackagePage(this);
-            Icon = BitmapFrame.Create(new Uri("pack://application:,,,/icon-gray.ico"));
+            var iconGray = Properties.Resources.ResourceManager.GetObject("icon-png");
+            if (iconGray is byte[] buffer)
+                _projectPage.IconImage.Source = buffer.ByteArrayToBitmapImage();
             InitializeComponent();
             MainFrame.Navigate(_projectPage);
         }
