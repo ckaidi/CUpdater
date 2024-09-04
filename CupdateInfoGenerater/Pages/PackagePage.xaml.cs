@@ -1,6 +1,11 @@
-﻿using CUpdater;
+﻿//using CUpdater;
+using Mono.Cecil;
 using Newtonsoft.Json;
+using System.Collections;
+using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
+using System.Resources;
 using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Controls;
@@ -23,12 +28,17 @@ namespace CupdateInfoGenerater
         private CheckBoxState[] _lastFilter = [];
         private MainWindow _window;
 
+        /// <summary>
+        /// 是否在页面加载的时候自动加载路径
+        /// </summary>
+        public bool IsLoadPathWhenPageLoad = true;
+
         public PackagePage(MainWindow owner)
         {
             DataContext = AppModel;
             _window = owner;
             InitializeComponent();
-            Loaded += MainWindow_Loaded;
+            Loaded += MainPageLoaded;
             GuiDB.DBExtensions.UseTheScrollViewerScrolling(MainMarkdownViewer);
         }
 
@@ -55,10 +65,7 @@ namespace CupdateInfoGenerater
                         UnCheckedFilters(extExclued, rootItem);
                     }
                 }
-                else if (tabItem.Header.ToString() == "过滤器")
-                {
-                    _lastFilter = AppModel.AllFilters.Select(x => x.IsChecked).ToArray();
-                }
+                else if (tabItem.Header.ToString() == "过滤器") _lastFilter = AppModel.AllFilters.Select(x => x.IsChecked).ToArray();
             }
         }
 
@@ -70,8 +77,7 @@ namespace CupdateInfoGenerater
                 {
                     case CheckItem ci when ci.DataContext is Filters checkItemModel:
                         var ext = Path.GetExtension(checkItemModel.Name);
-                        if (filters.Contains(ext))
-                            checkItemModel.IsChecked = CheckBoxState.UnChecked;
+                        if (filters.Contains(ext)) checkItemModel.IsChecked = CheckBoxState.UnChecked;
                         break;
                     case CheckTreeItem checkTreeItem:
                         UnCheckedFilters(filters, checkTreeItem);
@@ -122,7 +128,7 @@ namespace CupdateInfoGenerater
         }
 
         /// <summary>
-        /// 读取打包路径
+        /// 加载所选取的需要打包的路径
         /// </summary>
         private void LoadPackagePath()
         {
@@ -134,7 +140,13 @@ namespace CupdateInfoGenerater
             LoadPackFolder(pf);
         }
 
-        private int ListFiles(PackFolderModels rootFolder, DirectoryInfo path)
+        /// <summary>
+        /// 枚举文件夹中的文件
+        /// </summary>
+        /// <param name="rootFolder"></param>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        private static int ListFiles(PackFolderModels rootFolder, DirectoryInfo path)
         {
             var result = 0;
             if (path != null)
@@ -160,7 +172,7 @@ namespace CupdateInfoGenerater
             return result;
         }
 
-        private void CreateFilesControl(CheckTreeItem listView, PackFolderModels path, bool ignoreFilter = false)
+        private static void CreateFilesControl(CheckTreeItem listView, PackFolderModels path, bool ignoreFilter = false)
         {
             var multiBinding = new MultiBinding()
             {
@@ -209,9 +221,10 @@ namespace CupdateInfoGenerater
             BindingOperations.SetBinding(listView, CheckTreeItem.StateProperty, multiBinding);
         }
 
-        private void MainWindow_Loaded(object? sender, RoutedEventArgs? e)
+        private void MainPageLoaded(object? sender, RoutedEventArgs? e)
         {
-            LoadPackagePath();
+            if (IsLoadPathWhenPageLoad)
+                LoadPackagePath();
         }
 
         /// <summary>
@@ -226,25 +239,109 @@ namespace CupdateInfoGenerater
                 Xceed.Wpf.Toolkit.MessageBox.Show(_window, "请选择需要打包的文件夹");
                 return;
             }
-            var dialog = new SaveFileDialog()
+
+            var openFileDialog = new FolderBrowserDialog();
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                FileName = "app",
-                Filter = "*.json|*.json",
-            };
-            if (dialog.ShowDialog() == DialogResult.OK)
-            {
+                var folderPath = openFileDialog.SelectedPath;
+                var appJsonFolder = Path.Join(folderPath, "package");
+
+                // 复制更新包
+                var directoryPath = AppDomain.CurrentDomain.BaseDirectory;
+                FolderUtils.CopyDirectory(Path.Join(directoryPath, "Updater"), Path.Join(appJsonFolder, "Updater"));
+
+                // 生成app.json
+                var appJsonPath = Path.Join(AppModel.Path, "app.json");
+                if (Directory.Exists(appJsonFolder)) Directory.Delete(appJsonFolder, true);
+                Directory.CreateDirectory(appJsonFolder);
                 var result = new PublishFileModel(new PublishVersion(AppModel.VersionInfo.Version));
                 if (AppModel.VersionInfo.Description != null && File.Exists(AppModel.VersionInfo.Description))
-                {
                     result.Version.Description = File.ReadAllText(AppModel.VersionInfo.Description);
-                }
 
-                var isSuccess = CalculateFileHashAndVersion(result.Files, AppModel.PackFolder, "./");
+                var isSuccess = CalculateFileHash(result.Files, AppModel.PackFolder, "./");
                 if (isSuccess)
                 {
                     var json = JsonConvert.SerializeObject(result, Formatting.Indented);
-                    File.WriteAllText(dialog.FileName, json);
+                    File.WriteAllText(appJsonPath, json);
+
+                    // 生成压缩包
+                    ZipFolder(Path.Join(appJsonFolder, "app.zip"), AppModel.Path);
+
+                    // 生成安装包
+                    FolderUtils.CopyDirectory(Path.Join(directoryPath, "Installer"), Path.Join(appJsonFolder, "Installer"));
+
+                    ReplaceResource(Path.Join(Path.Join(appJsonFolder, "Installer"), "CInstaller.exe"),
+                        "CInstaller.Properties.Resources.resources", "app", Path.Join(appJsonFolder, "app.zip"));
+                    Xceed.Wpf.Toolkit.MessageBox.Show(MainWindow.Instance, "打包完成");
+                    Process.Start("appJsonFolder");
                 }
+            }
+        }
+
+        private static void ReplaceResource(string dllPath, string resourceFileName, string resourceName, string newResourcePath)
+        {
+            using var assembly = AssemblyDefinition.ReadAssembly(dllPath, new ReaderParameters { ReadWrite = true });
+            var resource = assembly.MainModule.Resources.OfType<EmbeddedResource>().FirstOrDefault(r => r.Name == resourceFileName);
+
+            if (resource == null)
+            {
+                Xceed.Wpf.Toolkit.MessageBox.Show(MainWindow.Instance, $"Resource '{resourceFileName}' not found in the assembly.");
+                return;
+            }
+
+            using var resourceStream = resource.GetResourceStream();
+            using var newResourceStream = new FileStream(newResourcePath, FileMode.Open, FileAccess.Read);
+            using var reader = new ResourceReader(resourceStream);
+            using var writerStream = new MemoryStream();
+            using var writer = new ResourceWriter(writerStream);
+            foreach (DictionaryEntry entry in reader)
+            {
+                var key = entry.Key?.ToString();
+                if (key == null) continue;
+                if (key == resourceName)
+                {
+                    // 用新的资源替换
+                    writer.AddResource(key, newResourceStream);
+                }
+                else
+                {
+                    writer.AddResource(key, entry.Value);
+                }
+            }
+
+            writer.Generate();
+            writerStream.Seek(0, SeekOrigin.Begin);
+
+            var newEmbeddedResource = new EmbeddedResource(resourceFileName, resource.Attributes, writerStream);
+            assembly.MainModule.Resources.Remove(resource);
+            assembly.MainModule.Resources.Add(newEmbeddedResource);
+
+            assembly.Write();
+        }
+
+        /// <summary>
+        /// 压缩文件夹到压缩文件
+        /// </summary>
+        /// <param name="zipPath">压缩包的路径</param>
+        /// <param name="folderPath">要添加的文件夹路径</param>
+        public static void ZipFolder(string zipPath, string folderPath)
+        {
+            using FileStream zipToOpen = new(zipPath, FileMode.OpenOrCreate);
+            using ZipArchive archive = new(zipToOpen, ZipArchiveMode.Create);
+            // 遍历文件夹中的所有文件和子文件夹
+            foreach (string filePath in Directory.GetFiles(folderPath, "*", SearchOption.AllDirectories))
+            {
+                // 计算压缩包内文件的路径
+                string relativePath = Path.GetRelativePath(folderPath, filePath);
+                relativePath = relativePath.Replace("\\", "/");  // 使用正斜杠作为路径分隔符
+
+                // 创建一个新条目（代表压缩包内的文件）
+                ZipArchiveEntry entry = archive.CreateEntry(relativePath);
+
+                // 将文件内容写入压缩包内的文件
+                using Stream entryStream = entry.Open();
+                using FileStream fileToCompress = new(filePath, FileMode.Open, FileAccess.Read);
+                fileToCompress.CopyTo(entryStream);
             }
         }
 
@@ -255,7 +352,7 @@ namespace CupdateInfoGenerater
         /// <param name="packFolder"></param>
         /// <param name="root"></param>
         /// <returns></returns>
-        private bool CalculateFileHashAndVersion(List<FileHash> fileHashes, PackFolderModels packFolder, string root)
+        private bool CalculateFileHash(List<FileHash> fileHashes, PackFolderModels packFolder, string root)
         {
             foreach (var item in packFolder.Files)
             {
@@ -272,7 +369,7 @@ namespace CupdateInfoGenerater
             }
 
             foreach (var item in packFolder.SubFolders)
-                if (!CalculateFileHashAndVersion(fileHashes, item, Path.Join(root, item.FolderName)))
+                if (!CalculateFileHash(fileHashes, item, Path.Join(root, item.FolderName)))
                     return false;
             return true;
         }
@@ -306,33 +403,25 @@ namespace CupdateInfoGenerater
         }
 
         /// <summary>
-        /// 打开保存的打包方案
+        /// 打开保存的文件
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void OpenButtonClick(object sender, RoutedEventArgs e)
+        /// <param name="fileName"></param>
+        public void OpenSaveProject(string fileName)
         {
-            var dialog = new OpenFileDialog()
+            var json = File.ReadAllText(fileName);
+            var r = JsonConvert.DeserializeObject<AppModels>(json);
+            if (r == null)
             {
-                Filter = "*.json|*.json",
-            };
-            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                Xceed.Wpf.Toolkit.MessageBox.Show(_window, "文件读取错误");
+                return;
+            }
+            AppModel = r;
+            DataContext = AppModel;
+            if (AppModel.PackFolder != null)
             {
-                var json = File.ReadAllText(dialog.FileName);
-                var r = JsonConvert.DeserializeObject<AppModels>(json);
-                if (r == null)
-                {
-                    Xceed.Wpf.Toolkit.MessageBox.Show(_window, "文件读取错误");
-                    return;
-                }
-                AppModel = r;
-                DataContext = AppModel;
-                if (AppModel.PackFolder != null)
-                {
-                    FilterWrapPanel.Children.Clear();
-                    LoadPackFolder(AppModel.PackFolder);
-                    _lastFilter = AppModel.AllFilters.Select(x => x.IsChecked).ToArray();
-                }
+                FilterWrapPanel.Children.Clear();
+                LoadPackFolder(AppModel.PackFolder);
+                _lastFilter = AppModel.AllFilters.Select(x => x.IsChecked).ToArray();
             }
         }
 

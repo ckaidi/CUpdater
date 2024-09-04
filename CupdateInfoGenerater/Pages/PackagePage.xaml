@@ -52,6 +52,12 @@
                                                      Markdown="{Binding VersionInfo.Description,Converter={StaticResource FileToMDConverter}}"/>
                         </ScrollViewer>
                     </TabItem>
+                    <!--<TabItem Header="安装器">
+                        <xceed:NoHeaderPropertyPanel DataContext="{Binding InstallerInfo}"/>
+                    </TabItem>-->
+                    <TabItem Header="更新器">
+                        <xceed:NoHeaderPropertyPanel DataContext="{Binding UpdateInfo}"/>
+                    </TabItem>
                     <TabItem Header="文件">
                         <ScrollViewer x:Name="MainScrollViewer" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
                             <TreeView x:Name="FilesListView"/>
@@ -77,12 +83,10 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <Button Margin="5,0" Width="120" Content="打包" Click="GenerateButtonClick"/>
-            <Button Margin="5,0" Width="120" Content="打开" Click="OpenButtonClick" Grid.Column="1"/>
-            <Button Margin="5,0" Width="120" Content="保存" Click="SaveButtonClick" Grid.Column="2"/>
-            <Button Margin="5,0" Width="120" Content="关闭项目" Click="CloseProjectButtonClick" Grid.Column="3"/>
+            <Button Margin="5,0" Width="120" Content="保存" Click="SaveButtonClick" Grid.Column="1"/>
+            <Button Margin="5,0" Width="120" Content="关闭项目" Click="CloseProjectButtonClick" Grid.Column="2"/>
         </Grid>
     </Grid>
 </xceed:Page>

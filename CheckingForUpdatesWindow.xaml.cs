@@ -99,7 +99,46 @@ namespace CUpdater
             }
         }
 
-        private bool VersionCompare(string oldVersion, string newVersion)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="cancellationTokenSource"></param>
+        /// <returns></returns>
+        public static async Task<Tuple<PublishFileModel, PublishFileModel>> CheckUpdateBackgroundAsync(CancellationTokenSource cancellationTokenSource)
+        {
+            try
+            {
+                using (var httpClient = new HttpClient())
+                {
+                    using (var response = await httpClient.GetAsync(AppModel.URL + "app.json", HttpCompletionOption.ResponseHeadersRead, cancellationTokenSource.Token))
+                    {
+                        PublishJsonText = await response.Content.ReadAsStringAsync();
+                        var publishFileModel = JsonConvert.DeserializeObject<PublishFileModel>(PublishJsonText);
+                        PublishFileModel currentVersion = null;
+                        if (File.Exists("../app.json"))
+                        {
+                            var thisPublishFileModelJson = File.ReadAllText("../app.json");
+                            if (thisPublishFileModelJson != null)
+                            {
+                                currentVersion = JsonConvert.DeserializeObject<PublishFileModel>(thisPublishFileModelJson);
+                                if (currentVersion != null && VersionCompare(currentVersion.Version.Version, publishFileModel.Version.Version)) return null;
+                            }
+                        }
+                        return new Tuple<PublishFileModel, PublishFileModel>(currentVersion, publishFileModel);
+                    }
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                return null;
+            }
+            catch (HttpRequestException)
+            {
+                return null;
+            }
+        }
+
+        private static bool VersionCompare(string oldVersion, string newVersion)
         {
             var vOld = new Version(oldVersion);
             var vNew = new Version(newVersion);

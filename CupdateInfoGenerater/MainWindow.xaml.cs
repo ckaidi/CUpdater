@@ -13,6 +13,7 @@ namespace CupdateInfoGenerater
     {
         private readonly NewProjectPage _projectPage;
         private readonly PackagePage _packagePage;
+        public static MainWindow Instance { get; private set; }
 
         public MainWindow()
         {
@@ -23,16 +24,29 @@ namespace CupdateInfoGenerater
                 _projectPage.IconImage.Source = buffer.ByteArrayToBitmapImage();
             InitializeComponent();
             MainFrame.Navigate(_projectPage);
+            Instance = this;
         }
 
         public void OpenFolder()
         {
+            _packagePage.IsLoadPathWhenPageLoad = true;
             MainFrame.Navigate(_packagePage);
         }
 
         public void CloseProject()
         {
             MainFrame.Navigate(_projectPage);
+        }
+
+        /// <summary>
+        /// 打开已保存的项目
+        /// </summary>
+        /// <param name="fileName"></param>
+        public void SaveProject(string fileName)
+        {
+            _packagePage.IsLoadPathWhenPageLoad = false;
+            _packagePage.OpenSaveProject(fileName);
+            MainFrame.Navigate(_packagePage);
         }
     }
 }

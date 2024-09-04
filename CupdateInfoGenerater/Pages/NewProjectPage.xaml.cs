@@ -18,7 +18,7 @@ namespace CupdateInfoGenerater
         }
 
         /// <summary>
-        /// 选取打包路径
+        /// 打开指定文件夹
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
@@ -30,6 +30,23 @@ namespace CupdateInfoGenerater
                 var folderPath = openFileDialog.SelectedPath;
                 PackagePage.AppModel.Path = folderPath;
                 _mainWindow.OpenFolder();
+            }
+        }
+
+        /// <summary>
+        /// 打开项目
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OpenProjectButtonClick(object sender, RoutedEventArgs e)
+        {
+            var openFileDialog = new OpenFileDialog()
+            {
+                Filter = "配置文件夹|*.json",
+            };
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                _mainWindow.SaveProject(openFileDialog.FileName);
             }
         }
     }

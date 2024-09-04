@@ -46,7 +46,8 @@
             <Button Content="打开文件夹" Width="240" Height="36"
                     Click="OpenFolderButtonClick"/>
             <TextBlock Height="16"/>
-            <Button Content="打开项目" Width="240" Height="36"/>
+            <Button Content="打开项目" Width="240" Height="36"
+                    Click="OpenProjectButtonClick"/>
         </StackPanel>
     </Grid>
 </Page>

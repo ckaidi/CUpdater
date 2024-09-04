@@ -1,5 +1,4 @@
-﻿using CUpdater;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using Xceed.Wpf.Toolkit;
 using Xceed.Wpf.Toolkit.Core;
 
@@ -39,6 +38,16 @@ namespace CupdateInfoGenerater
         /// 版本信息
         /// </summary>
         public PublishVersion? VersionInfo { get; set; } = new();
+
+        /// <summary>
+        /// 安装信息
+        /// </summary>
+        public InstallerInfo? InstallerInfo { get; set; } = new();
+
+        /// <summary>
+        /// 更新信息
+        /// </summary>
+        public UpdateInfo? UpdateInfo { get; set; } = new();
     }
 
     public class PackFolderModels : ViewModelBase

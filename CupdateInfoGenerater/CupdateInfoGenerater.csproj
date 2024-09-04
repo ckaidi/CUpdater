@@ -31,11 +31,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Costura.Fody" Version="5.7.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="Markdig.Wpf" Version="0.5.0.1" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.5" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
     <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
@@ -43,7 +40,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Xceed.Wpf.Toolkit\Xceed.Wpf.Toolkit.csproj" />
-    <ProjectReference Include="..\CUpdater.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -60,5 +56,9 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="xcopy /E /Y /I &quot;D:\codes\csharp\CUpdater\bin\x64\$(ConfigurationName)&quot; &quot;$(TargetDir)\Updater&quot;&#xD;&#xA;xcopy /E /Y /I &quot;D:\codes\csharp\CInstaller\bin\x64\$(ConfigurationName)&quot; &quot;$(TargetDir)\Installer&quot;" />
+  </Target>
 
 </Project>
