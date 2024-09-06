@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using Xceed.Wpf.Toolkit.Core.Attributes;
 using Xceed.Wpf.Toolkit.Core;
+using Xceed.Wpf.Toolkit;
 
 namespace CupdateInfoGenerater
 {
@@ -28,6 +29,10 @@ namespace CupdateInfoGenerater
                 }
             }
         }
+
+        [DisplayName("app.json文件夹路径")]
+        [FolderPath]
+        public string FolderPath { get; set; } = "./";
 
         [DisplayName("版本")]
         public string Version

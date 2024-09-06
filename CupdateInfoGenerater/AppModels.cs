@@ -20,6 +20,9 @@ namespace CupdateInfoGenerater
                 {
                     _path = value;
                     OnPropertyChanged();
+                    if (_path == null || VersionInfo == null) return;
+                    VersionInfo.FolderPath = _path;
+                    OnPropertyChanged(nameof(VersionInfo));
                 }
             }
         }
