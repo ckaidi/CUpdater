@@ -11,7 +11,22 @@ namespace CupdateInfoGenerater
         private string _version = "1.0.0.0";
         private string _description;
         private string _executePath;
+        private string _name;
         public DateTime PublishDate { get; } = DateTime.Now;
+
+        [DisplayName("名称")]
+        public string Name
+        {
+            get => _name;
+            set
+            {
+                if (value != _name)
+                {
+                    _name = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         /// <summary>
         /// 执行文件路径
@@ -26,6 +41,8 @@ namespace CupdateInfoGenerater
                 {
                     _executePath = value;
                     OnPropertyChanged();
+                    if (_executePath.TryGetFileVersion(out var version))
+                        Version = version;
                 }
             }
         }

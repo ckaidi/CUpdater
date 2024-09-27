@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -52,6 +53,12 @@ namespace CUpdater
                 {
                     using (var response = await httpClient.GetAsync(AppModel.URL + "app.json", HttpCompletionOption.ResponseHeadersRead, _cancellationTokenSource.Token))
                     {
+                        if (!response.IsSuccessStatusCode)
+                            Dispatcher.Invoke(() =>
+                            {
+                                Xceed.Wpf.Toolkit.MessageBox.Show(this, "网络请求错误,请稍候再试");
+                                Close();
+                            });
                         PublishJsonText = await response.Content.ReadAsStringAsync();
                         _publishFileModel = JsonConvert.DeserializeObject<PublishFileModel>(PublishJsonText);
                         PublishFileModel currentVersion = null;
@@ -100,7 +107,7 @@ namespace CUpdater
         }
 
         /// <summary>
-        /// 
+        /// 获取
         /// </summary>
         /// <param name="cancellationTokenSource"></param>
         /// <returns></returns>
@@ -112,6 +119,7 @@ namespace CUpdater
                 {
                     using (var response = await httpClient.GetAsync(AppModel.URL + "app.json", HttpCompletionOption.ResponseHeadersRead, cancellationTokenSource.Token))
                     {
+                        if (!response.IsSuccessStatusCode) return null;
                         PublishJsonText = await response.Content.ReadAsStringAsync();
                         var publishFileModel = JsonConvert.DeserializeObject<PublishFileModel>(PublishJsonText);
                         PublishFileModel currentVersion = null;

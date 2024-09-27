@@ -1,6 +1,8 @@
-﻿using System;
+﻿using CommandLine;
+using System;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace CUpdater
@@ -12,57 +14,79 @@ namespace CUpdater
     {
         public static Process AppProcess;
 
-        private async void Application_Startup(object sender, StartupEventArgs e)
+        private void Application_Startup(object sender, StartupEventArgs e)
         {
             string[] args = e.Args;
-            if (args.Length >= 1)
+            Parser.Default.ParseArguments<ArgsOptionModel>(args).WithParsed(opts => RunOptionsAsync(opts));
+        }
+
+        private async void RunOptionsAsync(ArgsOptionModel opts)
+        {
+            if (opts.Command)
             {
-                if (int.TryParse(args[0], out var processId))
-                {
+
+            }
+            else
+            {
+                if (opts.ProcessId != -1)
                     try
                     {
                         // 查找正在运行的进程
-                        AppProcess = Process.GetProcessById(processId);
+                        AppProcess = Process.GetProcessById(opts.ProcessId);
                         AppProcess.EnableRaisingEvents = true;
                     }
                     catch { }
-                }
-            }
-            if (args.Length >= 2)
-            {
-                if (args[1] == "debug")
+                switch (opts.Mode)
                 {
+                    case "debug":
 #if DEBUG
-                    Thread.Sleep(20000);
+                        Thread.Sleep(20000);
 #endif
+                        break;
+                    case "background":
+                        {
+                            var cancelToken = new CancellationTokenSource();
+                            var tuple = await CheckingForUpdatesWindow.CheckUpdateBackgroundAsync(cancelToken);
+                            if (tuple == null)
+                            {
+                                Environment.Exit(0);
+                                return;
+                            }
+                            var current = tuple.Item1;
+                            var publish = tuple.Item2;
+                            Dispatcher.Invoke(() =>
+                            {
+                                var update = new UpdateAvailableWindow(current, publish);
+                                update.Show();
+                            });
+                            return;
+                        }
+                    case "auto":
+                        {
+                            var cancelToken = new CancellationTokenSource();
+                            var tuple = await CheckingForUpdatesWindow.CheckUpdateBackgroundAsync(cancelToken);
+                            if (tuple == null)
+                            {
+                                Environment.Exit(0);
+                                return;
+                            }
+                            var current = tuple.Item1;
+                            var publish = tuple.Item2;
+                            if(current==null)
+                            {
+                                Environment.Exit(0);
+                                return;
+                            }
+                            await UpdateAvailableWindow.DownloadNewVersionAppAsync(current, publish);
+                            Environment.Exit(0);
+                            return;
+                        }
+                    default: break;
                 }
-                else if (args[1] == "background")
-                {
-                    var cancelToken = new CancellationTokenSource();
-                    var tuple = await CheckingForUpdatesWindow.CheckUpdateBackgroundAsync(cancelToken);
-                    if (tuple == null)
-                    {
-                        Environment.Exit(0);
-                        return;
-                    }
-                    var current = tuple.Item1;
-                    var publish = tuple.Item2;
-                    Dispatcher.Invoke(() =>
-                    {
-                        var update = new UpdateAvailableWindow(current, publish);
-                        update.Show();
-                    });
-                    return;
-                }
+
+                var mainWindow = new CheckingForUpdatesWindow();
+                mainWindow.Show();
             }
-
-            var mainWindow = new CheckingForUpdatesWindow();
-            mainWindow.Show();
-        }
-
-        private void Application_Exit(object sender, ExitEventArgs e)
-        {
-
         }
     }
 }

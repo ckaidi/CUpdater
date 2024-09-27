@@ -243,16 +243,14 @@ namespace CupdateInfoGenerater
             var openFileDialog = new FolderBrowserDialog();
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                var folderPath = openFileDialog.SelectedPath;
-                var appJsonFolder = Path.Join(folderPath, "package");
+                var appJsonFolder = openFileDialog.SelectedPath;
 
                 // 复制更新包
                 var directoryPath = AppDomain.CurrentDomain.BaseDirectory;
-                FolderUtils.CopyDirectory(Path.Join(directoryPath, "Updater"), Path.Join(appJsonFolder, "Updater"));
+                FolderUtils.CopyDirectory(Path.Join(directoryPath, "Updater"), Path.Join(AppModel.Path, "Updater"));
 
                 // 生成app.json
                 var appJsonPath = Path.Join(AppModel.Path, "app.json");
-                if (Directory.Exists(appJsonFolder)) Directory.Delete(appJsonFolder, true);
                 Directory.CreateDirectory(appJsonFolder);
                 var result = new PublishFileModel(new PublishVersion(AppModel.VersionInfo.Version));
                 if (AppModel.VersionInfo.Description != null && File.Exists(AppModel.VersionInfo.Description))
@@ -263,17 +261,18 @@ namespace CupdateInfoGenerater
                 {
                     var json = JsonConvert.SerializeObject(result, Formatting.Indented);
                     File.WriteAllText(appJsonPath, json);
+                    File.WriteAllText(Path.Combine(AppModel.Path, "app.json"), json);
 
                     // 生成压缩包
                     ZipFolder(Path.Join(appJsonFolder, "app.zip"), AppModel.Path);
 
                     // 生成安装包
-                    FolderUtils.CopyDirectory(Path.Join(directoryPath, "Installer"), Path.Join(appJsonFolder, "Installer"));
+                    File.Copy(Path.Join(directoryPath, "Installer", "CInstaller.exe"), Path.Combine(appJsonFolder, $"{AppModel.VersionInfo.Name}安装器.exe"), true);
 
-                    ReplaceResource(Path.Join(Path.Join(appJsonFolder, "Installer"), "CInstaller.exe"),
+                    ReplaceResource(Path.Combine(appJsonFolder, $"{AppModel.VersionInfo.Name}安装器.exe"),
                         "CInstaller.Properties.Resources.resources", "app", Path.Join(appJsonFolder, "app.zip"));
                     Xceed.Wpf.Toolkit.MessageBox.Show(MainWindow.Instance, "打包完成");
-                    Process.Start("appJsonFolder");
+                    Process.Start("explorer.exe", appJsonFolder);
                 }
             }
         }

@@ -4,6 +4,6 @@
     <ProjectView>ProjectFiles</ProjectView>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
-    <StartArguments>1111 debug</StartArguments>
+    <StartArguments>-m auto</StartArguments>
   </PropertyGroup>
 </Project>

@@ -9,8 +9,26 @@ namespace CUpdater
     {
         private string _version = "1.0.0.0";
         private string _description;
+        private string _name;
         private string _executePath;
         public DateTime PublishDate { get; } = DateTime.Now;
+
+        /// <summary>
+        /// 执行文件路径
+        /// </summary>
+        [DisplayName("项目名称")]
+        public string Name
+        {
+            get => _name;
+            set
+            {
+                if (_name != value)
+                {
+                    _name = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         /// <summary>
         /// 执行文件路径
