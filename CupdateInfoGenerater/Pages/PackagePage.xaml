@@ -83,10 +83,12 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Button Margin="5,0" Width="120" Content="打包" Click="GenerateButtonClick"/>
-            <Button Margin="5,0" Width="120" Content="保存" Click="SaveButtonClick" Grid.Column="1"/>
-            <Button Margin="5,0" Width="120" Content="关闭项目" Click="CloseProjectButtonClick" Grid.Column="2"/>
+            <Button Margin="5,0" Width="120" Content="打包" Click="PackageButtonClick"/>
+            <Button Margin="5,0" Width="120" Content="生成app.json" Click="GenerateButtonClick" Grid.Column="1"/>
+            <Button Margin="5,0" Width="120" Content="保存" Click="SaveButtonClick" Grid.Column="2"/>
+            <Button Margin="5,0" Width="120" Content="关闭项目" Click="CloseProjectButtonClick" Grid.Column="3"/>
         </Grid>
     </Grid>
 </xceed:Page>

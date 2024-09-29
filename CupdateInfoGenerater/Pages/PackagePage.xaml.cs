@@ -232,7 +232,7 @@ namespace CupdateInfoGenerater
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void GenerateButtonClick(object sender, RoutedEventArgs e)
+        private void PackageButtonClick(object sender, RoutedEventArgs e)
         {
             if (!(AppModel?.Path != null && AppModel?.PackFolder != null && AppModel.VersionInfo != null))
             {
@@ -275,6 +275,16 @@ namespace CupdateInfoGenerater
                     Process.Start("explorer.exe", appJsonFolder);
                 }
             }
+        }
+
+        /// <summary>
+        /// 生成app.json并生成压缩包
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void GenerateButtonClick(object sender, RoutedEventArgs e)
+        {
+
         }
 
         private static void ReplaceResource(string dllPath, string resourceFileName, string resourceName, string newResourcePath)
