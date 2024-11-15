@@ -39,7 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Xceed.Wpf.Toolkit\Xceed.Wpf.Toolkit.csproj" />
+    <ProjectReference Include="..\..\Xceed\Xceed.Wpf.Toolkit.csproj" />
   </ItemGroup>
 
   <ItemGroup>

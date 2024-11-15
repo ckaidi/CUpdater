@@ -1,8 +1,4 @@
-﻿using CupdateInfoGenerater;
-using System;
-using System.Windows.Controls;
-using System.Windows.Media.Imaging;
-using static Xceed.Wpf.Toolkit.ByteArrayExtensions;
+﻿using static Xceed.Wpf.Toolkit.ByteArrayExtensions;
 
 namespace CupdateInfoGenerater
 {
